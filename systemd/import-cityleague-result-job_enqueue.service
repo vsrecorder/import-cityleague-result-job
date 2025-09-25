@@ -1,0 +1,14 @@
+[Unit]
+Description=import-cityleague-result-job_enqueue
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/ubuntu/vsrecorder/import-cityleague-result-job/bin/enqueue
+WorkingDirectory=/home/ubuntu/vsrecorder/import-cityleague-result-job
+
+# 失敗時リトライ
+Restart=on-failure
+RestartSec=900
+StartLimitInterval=5400
+StartLimitBurst=5

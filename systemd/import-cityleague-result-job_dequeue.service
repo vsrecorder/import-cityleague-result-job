@@ -1,0 +1,8 @@
+[Unit]
+Description=import-cityleague-result-job_dequeue
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/ubuntu/vsrecorder/import-cityleague-result-job/bin/dequeue
+WorkingDirectory=/home/ubuntu/vsrecorder/import-cityleague-result-job
