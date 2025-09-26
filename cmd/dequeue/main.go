@@ -265,7 +265,7 @@ func main() {
 				}
 
 				results, err := getEventResults(event.ID)
-				if err != nil {
+				if len(results) == 0 || err != nil {
 					select {
 					case errorChan <- workerError{
 						err:      err,
