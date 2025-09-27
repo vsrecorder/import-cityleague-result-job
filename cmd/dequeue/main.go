@@ -77,6 +77,10 @@ func getEventResults(eventId uint) ([]*EventResult, error) {
 	}
 	defer res.Body.Close()
 
+	if res.StatusCode == http.StatusNotFound {
+		return []*EventResult{}, nil
+	}
+
 	body, err := io.ReadAll(res.Body)
 	if err != nil {
 		return nil, err
