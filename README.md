@@ -35,3 +35,7 @@ sudo systemctl status import-cityleague-result-job_dequeue.service
 journalctl -eu import-cityleague-result-job_enqueue
 journalctl -eu import-cityleague-result-job_dequeue
 ```
+
+```
+sudo systemctl reset-failed import-cityleague-result-job_enqueue.service
+```

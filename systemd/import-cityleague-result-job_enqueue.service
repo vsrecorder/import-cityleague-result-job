@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/mkr wrap --name import-cityleague-result-job_enqueue --auto-close -- /home/ubuntu/vsrecorder/import-cityleague-result-job/bin/enqueue
+ExecStart=/bin/bash -lc '/usr/bin/mkr wrap --name import-cityleague-result-job_enqueue --auto-close -- /home/ubuntu/vsrecorder/import-cityleague-result-job/bin/enqueue && ts=$(date +%%s); printf "import-cityleague-result-job.enqueue.last_run_time\t%%s\t%%s\n" "$ts" "$ts" | mkr throw --service monolith'
 WorkingDirectory=/home/ubuntu/vsrecorder/import-cityleague-result-job
 
 # 失敗時リトライ
