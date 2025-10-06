@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=ExecStart=/usr/bin/mkr wrap --name import-cityleague-result-job_enqueue --auto-close -- /home/ubuntu/vsrecorder/import-cityleague-result-job/bin/enqueue
+ExecStart=/usr/bin/mkr wrap --name import-cityleague-result-job_enqueue --auto-close -- /home/ubuntu/vsrecorder/import-cityleague-result-job/bin/enqueue
 WorkingDirectory=/home/ubuntu/vsrecorder/import-cityleague-result-job
 
 # 失敗時リトライ
