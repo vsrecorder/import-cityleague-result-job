@@ -323,6 +323,8 @@ func main() {
 						result.DeckId,
 					)
 
+					log.Printf("CityleagueResult: %v", m)
+
 					if tx := db.Create(&m); tx.Error != nil {
 						var pgErr *pgconn.PgError
 						if errors.As(tx.Error, &pgErr) && pgErr.Code == "23505" {
