@@ -127,6 +127,7 @@ func uploadDeckImage(deckCode string) error {
 		options.BaseEndpoint = &baseEndpoint
 	})
 
+	// すでにアップロードされている場合はスキップする
 	if _, err = s3client.GetObject(ctx, &s3.GetObjectInput{
 		Bucket: aws.String("vsrecorder"),
 		Key:    aws.String(fmt.Sprintf("images/decks/%s.jpg", deckCode)),
@@ -268,8 +269,9 @@ func main() {
 					leagueType = 0
 				}
 
+				// イベントの結果を取得
 				results, err := getEventResults(event.ID)
-				if len(results) == 0 || err != nil {
+				if err != nil {
 					select {
 					case errorChan <- workerError{
 						err:      err,
@@ -281,6 +283,13 @@ func main() {
 					return
 				}
 
+				if len(results) == 0 {
+					// 結果がない場合はスキップ
+					log.Printf("No results found for event ID %d, skipping", event.ID)
+					return
+				}
+
+				// 対象期間中のシティーリーグのIDを取得する
 				var cs model.CityleagueSchedule
 				if tx := db.Where("from_date <= ? AND to_date >= ?", event.Date, event.Date).First(&cs); tx.Error != nil {
 					select {
@@ -297,6 +306,7 @@ func main() {
 				cityleagueScheduleId := cs.ID
 
 				for _, result := range results {
+					// デッキコードがある場合は画像をアップロードする
 					if result.DeckId != "" {
 						if err := uploadDeckImage(result.DeckId); err != nil {
 							select {
@@ -343,6 +353,7 @@ func main() {
 					}
 				}
 
+				// キューから削除
 				if err := mqc.DeleteMessage(context.Background(), msgId); err != nil {
 					select {
 					case errorChan <- workerError{
