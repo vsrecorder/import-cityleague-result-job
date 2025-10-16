@@ -28,6 +28,11 @@ import (
 	"github.com/vsrecorder/import-cityleague-result-job/internal/infrastructure/simplemq"
 )
 
+const (
+	errorMaxNum       = 50
+	concurrencyMaxNum = 100
+)
+
 type OfficialEvent struct {
 	ID              uint      `json:"id"`
 	Title           string    `json:"title"`
@@ -208,7 +213,8 @@ func main() {
 
 	mqc := simplemq.NewSimpleMQClient(mqName, mqToken)
 
-	errorChan := make(chan workerError, 50)
+	errorChan := make(chan workerError, errorMaxNum)
+	semChan := make(chan struct{}, concurrencyMaxNum)
 
 	var wg sync.WaitGroup
 	for {
@@ -240,9 +246,13 @@ func main() {
 		}
 
 		{
+			semChan <- struct{}{}
 			wg.Add(1)
 			go func(event OfficialEvent, msgId string) {
-				defer wg.Done()
+				defer func() {
+					wg.Done()
+					<-semChan
+				}()
 
 				// ゴルーチン内でのpanic保護
 				defer func() {
