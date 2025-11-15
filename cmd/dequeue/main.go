@@ -117,7 +117,7 @@ func receiveMessageWithRetry(ctx context.Context, mqc simplemq.SimpleMQ) (*simpl
 			return nil, err
 		}
 
-		log.Printf("SendMessage failed (attempt %d/%d): %v. Retrying in %v...", attempt, maxRetries, err, interval)
+		log.Printf("Receive message failed (attempt %d/%d): %v. Retrying in %v...", attempt, maxRetries, err, interval)
 
 		// キャンセルされてたら中断
 		if ctx.Err() != nil {

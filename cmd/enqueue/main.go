@@ -18,7 +18,7 @@ import (
 
 const (
 	maxRetries      = 5
-	initialInterval = 3000 * time.Millisecond
+	initialInterval = 500 * time.Millisecond
 )
 
 type OfficialEvent struct {
@@ -77,8 +77,12 @@ func getEvents(date time.Time) ([]*OfficialEvent, error) {
 	return oegr.OfficialEvents, nil
 }
 
-func sendMessageWithRetry(ctx context.Context, mqc simplemq.SimpleMQ, msgReq *simplemq.SendMessageRequest) error {
+func sendMessageWithRetry(ctx context.Context, mqc simplemq.SimpleMQ, v []byte) error {
 	interval := initialInterval
+
+	msgReq := &simplemq.SendMessageRequest{
+		Content: string(base64.StdEncoding.EncodeToString(v)),
+	}
 
 	for attempt := 0; attempt <= maxRetries; attempt++ {
 		// メッセージ送信を試行
@@ -92,7 +96,7 @@ func sendMessageWithRetry(ctx context.Context, mqc simplemq.SimpleMQ, msgReq *si
 			return err
 		}
 
-		log.Printf("SendMessage failed (attempt %d/%d): %v. Retrying in %v...", attempt, maxRetries, err, interval)
+		log.Printf("Send message failed (attempt %d/%d): %v. Retrying in %v...", attempt, maxRetries, err, interval)
 
 		// キャンセルされてたら中断
 		if ctx.Err() != nil {
@@ -135,12 +139,8 @@ func main() {
 			os.Exit(1)
 		}
 
-		msgReq := &simplemq.SendMessageRequest{
-			Content: string(base64.StdEncoding.EncodeToString(v)),
-		}
-
-		if err := sendMessageWithRetry(context.Background(), mqc, msgReq); err != nil {
-			log.Printf("Failed to send message to MQ: %v", err)
+		if err := sendMessageWithRetry(context.Background(), mqc, v); err != nil {
+			log.Printf("Failed to send message to MQ [id: %d]: %v ", event.ID, err)
 			os.Exit(1)
 		}
 	}
