@@ -31,6 +31,9 @@ import (
 const (
 	errorMaxNum       = 50
 	concurrencyMaxNum = 100
+
+	maxRetries      = 5
+	initialInterval = 500 * time.Millisecond
 )
 
 type OfficialEvent struct {
@@ -97,6 +100,36 @@ func getEventResults(eventId uint) ([]*EventResult, error) {
 	}
 
 	return eds.Results, nil
+}
+
+func receiveMessageWithRetry(ctx context.Context, mqc simplemq.SimpleMQ) (*simplemq.ReceiveMessageResponse, error) {
+	interval := initialInterval
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// メッセージ送信を試行
+		res, err := mqc.ReceiveMessage(context.Background())
+		if err == nil {
+			return res, nil
+		}
+
+		// 最大試行回数に達したらエラーを返す
+		if attempt == maxRetries {
+			return nil, err
+		}
+
+		log.Printf("SendMessage failed (attempt %d/%d): %v. Retrying in %v...", attempt, maxRetries, err, interval)
+
+		// キャンセルされてたら中断
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
+		// 待機（指数バックオフ）
+		time.Sleep(interval)
+		interval *= 2
+	}
+
+	return nil, errors.New("unreachable code in receiveMessageWithRetry")
 }
 
 func convertPNG2JPG(imageBytes []byte) ([]byte, error) {
@@ -218,10 +251,9 @@ func main() {
 
 	var wg sync.WaitGroup
 	for {
-		res, err := mqc.ReceiveMessage(context.Background())
+		res, err := receiveMessageWithRetry(context.Background(), mqc)
 		if err != nil {
 			log.Printf("Failed to receive message from MQ: %v", err)
-			// TODO: リトライ処理を入れるなど
 			continue
 		}
 
@@ -234,14 +266,12 @@ func main() {
 		v, err := base64.StdEncoding.DecodeString(msg.Content)
 		if err != nil {
 			log.Printf("Invalid base64 in message %v, skipping: %v", msg.ID, err)
-			// TODO: デッドレターキューに入れるなど
 			continue
 		}
 
 		var event OfficialEvent
 		if err := json.Unmarshal(v, &event); err != nil {
 			log.Printf("Invalid JSON in message %v, skipping: %v", msg.ID, err)
-			// TODO: デッドレターキューに入れるなど
 			continue
 		}
 

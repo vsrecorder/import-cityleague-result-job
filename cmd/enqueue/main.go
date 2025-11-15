@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -13,6 +14,11 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/vsrecorder/import-cityleague-result-job/internal/infrastructure/simplemq"
+)
+
+const (
+	maxRetries      = 5
+	initialInterval = 3000 * time.Millisecond
 )
 
 type OfficialEvent struct {
@@ -71,6 +77,36 @@ func getEvents(date time.Time) ([]*OfficialEvent, error) {
 	return oegr.OfficialEvents, nil
 }
 
+func sendMessageWithRetry(ctx context.Context, mqc simplemq.SimpleMQ, msgReq *simplemq.SendMessageRequest) error {
+	interval := initialInterval
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		// メッセージ送信を試行
+		_, err := mqc.SendMessage(ctx, msgReq)
+		if err == nil {
+			return nil
+		}
+
+		// 最大試行回数に達したらエラーを返す
+		if attempt == maxRetries {
+			return err
+		}
+
+		log.Printf("SendMessage failed (attempt %d/%d): %v. Retrying in %v...", attempt, maxRetries, err, interval)
+
+		// キャンセルされてたら中断
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		// 待機（指数バックオフ）
+		time.Sleep(interval)
+		interval *= 2
+	}
+
+	return errors.New("unreachable code in sendMessageWithRetry")
+}
+
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
@@ -103,7 +139,7 @@ func main() {
 			Content: string(base64.StdEncoding.EncodeToString(v)),
 		}
 
-		if _, err := mqc.SendMessage(context.Background(), msgReq); err != nil {
+		if err := sendMessageWithRetry(context.Background(), mqc, msgReq); err != nil {
 			log.Printf("Failed to send message to MQ: %v", err)
 			os.Exit(1)
 		}
