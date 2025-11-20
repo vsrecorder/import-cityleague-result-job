@@ -5,11 +5,11 @@ import (
 )
 
 type CityleagueResult struct {
-	CityleagueScheduleId string
-	OfficialEventId      uint
+	CityleagueScheduleId string `gorm:"primaryKey"`
+	OfficialEventId      uint   `gorm:"primaryKey"`
 	LeagueType           uint
 	EventDate            time.Time
-	PlayerId             string
+	PlayerId             string `gorm:"primaryKey"`
 	PlayerName           string
 	Rank                 uint
 	Point                uint
